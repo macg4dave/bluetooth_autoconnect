@@ -1,4 +1,3 @@
 [submodule "error-logging"]
 	path = error-logging
 	url = https://github.com/macg4dave/error-logging
-	branch = main  # Replace 'main' with your desired branch
