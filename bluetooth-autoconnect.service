@@ -1,0 +1,11 @@
+[Unit]
+Description=Bluetooth Auto-Connect Service
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/local/share/bluetooth_autoconnect/bin/auto_connect_bluetooth.sh
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target
