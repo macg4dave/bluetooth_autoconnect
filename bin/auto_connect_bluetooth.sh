@@ -12,6 +12,32 @@ DEVICE_JSON="/usr/local/share/bluetooth_autoconnect/bluetooth_devices.json"
 # Array to track background monitoring processes
 declare -A MONITOR_PIDS
 
+# Function to check if Bluetooth is powered on
+check_bluetooth_power() {
+  log_write 3 "Checking if Bluetooth is powered on"
+  bluetooth_status=$(bluetoothctl show | grep "Powered: yes")
+  if [ -n "$bluetooth_status" ]; then
+    log_write 3 "Bluetooth is powered on"
+    return 0
+  else
+    log_write 1 "Bluetooth is not powered on"
+    return 1
+  fi
+}
+
+# Function to power on Bluetooth if it's off
+power_on_bluetooth() {
+  log_write 3 "Powering on Bluetooth"
+  bluetoothctl power on
+  if [ $? -eq 0 ]; then
+    log_write 3 "Bluetooth powered on successfully"
+    return 0
+  else
+    log_write 1 "Failed to power on Bluetooth"
+    return 1
+  fi
+}
+
 # Function to retrieve MAC addresses from JSON file
 read_devices_from_json() {
   if [ ! -f "$DEVICE_JSON" ]; then
@@ -80,10 +106,11 @@ monitor_device_events() {
   # Monitor events for the specific device using bluetoothctl in a background process
   bluetoothctl monitor | while read line; do
     if echo "$line" | grep -q "Device $device_mac Disconnected"; then
-      log_write 2 "Device $device_mac disconnected"
+      log_write 1 "Device $device_mac disconnected"
+      # Log the disconnection but do not attempt to reconnect here
     fi
   done &
-  
+
   # Store the PID of the background process
   MONITOR_PIDS["$device_mac"]=$!
   log_write 3 "Monitoring process for device $device_mac started with PID ${MONITOR_PIDS[$device_mac]}"
@@ -97,6 +124,22 @@ stop_all_monitors() {
     kill "${MONITOR_PIDS[$device_mac]}" 2>/dev/null
     unset MONITOR_PIDS["$device_mac"]
   done
+}
+
+# Function to handle device reconnection attempts
+attempt_reconnection() {
+  local device_mac=$1
+  log_write 3 "Attempting to reconnect to device: $device_mac"
+  
+  if ! check_connected "$device_mac"; then
+    if scan_device "$device_mac"; then
+      connect_device "$device_mac"
+    else
+      log_write 1 "Device $device_mac not found during reconnection attempt. Skipping."
+    fi
+  else
+    log_write 3 "Device $device_mac is already connected."
+  fi
 }
 
 # Function to process each device
@@ -129,6 +172,16 @@ process_device() {
 main_loop() {
   while true; do
     log_write 3 "Starting Bluetooth auto-connect cycle"
+
+    # Check if Bluetooth is powered on before proceeding
+    if ! check_bluetooth_power; then
+      log_write 1 "Bluetooth is not powered on. Attempting to power it on..."
+      if ! power_on_bluetooth; then
+        log_write 1 "Failed to power on Bluetooth. Retrying in 5 seconds..."
+        sleep 5
+        continue
+      fi
+    fi
 
     # Read devices from the JSON file
     read_devices_from_json
