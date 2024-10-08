@@ -21,7 +21,8 @@ This script automatically manages the connection of Bluetooth devices on a Linux
 To install these on Debian/Ubuntu-based systems, run:
 
 ```bash
-sudo apt-get install bluez jq```
+sudo apt-get install bluez jq
+```
 
 ## Pre-Requisites: Pairing and Trusting Devices
 Before using the script, ensure that the Bluetooth devices you want to auto-connect are paired and trusted. You can do this using `bluetoothctl`:
