@@ -78,7 +78,7 @@ Modify the `bluetooth_devices.json` file located in `/usr/local/share/bluetooth_
 {
   "devices": [
     "82:BA:BE:67:DE:D2",
-    "XX:XX:XX:XX:XX:XX"
+    "AA:AA:AA:AA:AA:AA"
   ]
 }
 ```
