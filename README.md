@@ -20,80 +20,80 @@ This script automatically manages the connection of Bluetooth devices on a Linux
   
 To install these on Debian/Ubuntu-based systems, run:
 
-\`\`\`bash
+'''bash
 sudo apt-get install bluez jq
-\`\`\`
+'''
 
 ## Pre-Requisites: Pairing and Trusting Devices
 Before using the script, ensure that the Bluetooth devices you want to auto-connect are paired and trusted. You can do this using `bluetoothctl`:
 
 1. Start `bluetoothctl`:
 
-\`\`\`bash
+'''bash
 bluetoothctl
-\`\`\`
+'''
 
 2. Turn on the Bluetooth agent and scan for devices:
 
-\`\`\`bash
+'''bash
 agent on
 scan on
-\`\`\`
+'''
 
 3. Once the device is found (e.g., `82:BA:BE:67:DE:D2`), pair and trust it:
 
-\`\`\`bash
+'''bash
 pair 82:BA:BE:67:DE:D2
 trust 82:BA:BE:67:DE:D2
-\`\`\`
+'''
 
 4. Confirm that the device is paired and trusted:
 
-\`\`\`bash
+'''bash
 info 82:BA:BE:67:DE:D2
-\`\`\`
+'''
 
 ## Script Installation
 
 ### Step 1: Clone the Repository
 Clone the repository to your local machine:
 
-\`\`\`bash
+'''bash
 git clone https://github.com/yourusername/bluetooth-autoconnect.git
 cd bluetooth-autoconnect
-\`\`\`
+'''
 
 ### Step 2: Configure the Bluetooth Devices
 Create or modify the `bluetooth_devices.json` file located in `/usr/local/share/bluetooth_autoconnect/bluetooth_devices.json`. Add the MAC addresses of the Bluetooth devices you want to auto-connect:
 
-\`\`\`json
+'''json
 {
   "devices": [
     "82:BA:BE:67:DE:D2",
     "XX:XX:XX:XX:XX:XX"
   ]
 }
-\`\`\`
+'''
 
 ### Step 3: Make the Script Executable
 Ensure the script is executable:
 
-\`\`\`bash
+'''bash
 chmod +x /usr/local/share/bluetooth_autoconnect/bin/auto_connect_bluetooth.sh
-\`\`\`
+'''
 
 ## Systemd Service Setup
 
 ### Step 1: Create the Systemd Service File
 To ensure the script starts automatically after the system boots, create a systemd service file:
 
-\`\`\`bash
+'''bash
 sudo nano /etc/systemd/system/bluetooth-autoconnect.service
-\`\`\`
+'''
 
 Paste the following content into the file:
 
-\`\`\`ini
+'''ini
 [Unit]
 Description=Bluetooth Auto-Connect Service
 After=multi-user.target
@@ -105,23 +105,23 @@ User=root
 
 [Install]
 WantedBy=multi-user.target
-\`\`\`
+'''
 
 ### Step 2: Enable and Start the Service
 Reload the systemd manager configuration, then enable and start the service:
 
-\`\`\`bash
+'''bash
 sudo systemctl daemon-reload
 sudo systemctl enable bluetooth-autoconnect.service
 sudo systemctl start bluetooth-autoconnect.service
-\`\`\`
+'''
 
 ### Step 3: Check the Service Status
 You can check if the service is running properly with:
 
-\`\`\`bash
+'''bash
 sudo systemctl status bluetooth-autoconnect.service
-\`\`\`
+'''
 
 ## Usage
 
@@ -129,15 +129,15 @@ Once the system boots or the service is started manually, the script will contin
 
 To stop the service:
 
-\`\`\`bash
+'''bash
 sudo systemctl stop bluetooth-autoconnect.service
-\`\`\`
+'''
 
 To disable the service from starting on boot:
 
-\`\`\`bash
+'''bash
 sudo systemctl disable bluetooth-autoconnect.service
-\`\`\`
+'''
 
 ## Troubleshooting
 
@@ -148,9 +148,9 @@ sudo systemctl disable bluetooth-autoconnect.service
   
 - **Logs**: Check the logs for detailed error messages or status updates:
   
-  \`\`\`bash
+  '''bash
   journalctl -u bluetooth-autoconnect.service
-  \`\`\`
+  '''
 
 ## License
 
