@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Source error logging script
+# NOTE: This path should be valid on your system; modify accordingly if needed.
 source /usr/local/share/bluetooth_autoconnect/bin/error-logging/error-logging.sh
 
 log_file="/var/log/bluetooth_autoconnect.log"
@@ -12,11 +13,24 @@ DEVICE_JSON="/usr/local/share/bluetooth_autoconnect/bluetooth_devices.json"
 # Array to track background monitoring processes
 declare -A MONITOR_PIDS
 
+# Variable to track termination requests
+terminate_script=0
+
+# Function to handle SIGINT and SIGTERM signals
+handle_termination() {
+  log_write 3 "Termination signal received. Stopping all monitoring processes..."
+  terminate_script=1
+  stop_all_monitors
+  exit 0
+}
+
+# Trap to stop all monitoring processes and clean up on Ctrl+C or termination
+trap handle_termination SIGINT SIGTERM
+
 # Function to check if Bluetooth is powered on
 check_bluetooth_power() {
   log_write 3 "Checking if Bluetooth is powered on"
-  bluetooth_status=$(bluetoothctl show | grep "Powered: yes")
-  if [ -n "$bluetooth_status" ]; then
+  if bluetoothctl show | grep -q "Powered: yes"; then
     log_write 3 "Bluetooth is powered on"
     return 0
   else
@@ -28,8 +42,7 @@ check_bluetooth_power() {
 # Function to power on Bluetooth if it's off
 power_on_bluetooth() {
   log_write 3 "Powering on Bluetooth"
-  bluetoothctl power on
-  if [ $? -eq 0 ]; then
+  if bluetoothctl power on; then
     log_write 3 "Bluetooth powered on successfully"
     return 0
   else
@@ -83,16 +96,45 @@ scan_device() {
   fi
 }
 
-# Function to connect to the device
+# Function for connection timeout logic
+wait_for_connection() {
+  local device_mac=$1
+  local timeout=$2
+  local start_time current_time elapsed_time
+
+  start_time=$(date +%s)
+
+  while true; do
+    # Check if device is connected
+    if check_connected "$device_mac"; then
+      return 0
+    fi
+
+    # Check for timeout
+    current_time=$(date +%s)
+    elapsed_time=$((current_time - start_time))
+    if [ "$elapsed_time" -ge "$timeout" ]; then
+      return 1
+    fi
+
+    sleep 1  # Wait before checking again
+  done
+}
+
+# Function to connect to the device and wait for confirmation
 connect_device() {
   local device_mac=$1
+  local timeout=10  # Timeout duration (in seconds)
+
   log_write 3 "Attempting to connect to device: $device_mac"
-  bluetoothctl connect "$device_mac"
-  if [ $? -eq 0 ]; then
+  bluetoothctl connect "$device_mac" &
+
+  # Use the wait_for_connection function for easier debugging and timeout control
+  if wait_for_connection "$device_mac" "$timeout"; then
     log_write 3 "Successfully connected to device: $device_mac"
     return 0
   else
-    log_write 1 "Failed to connect to device: $device_mac"
+    log_write 1 "Timeout: Failed to connect to $device_mac within $timeout seconds."
     return 1
   fi
 }
@@ -104,10 +146,9 @@ monitor_device_events() {
   log_write 3 "Starting event monitoring for device: $device_mac"
 
   # Monitor events for the specific device using bluetoothctl in a background process
-  bluetoothctl monitor | while read line; do
+  bluetoothctl monitor | while read -r line; do
     if echo "$line" | grep -q "Device $device_mac Disconnected"; then
       log_write 1 "Device $device_mac disconnected"
-      # Log the disconnection but do not attempt to reconnect here
     fi
   done &
 
@@ -122,24 +163,8 @@ stop_all_monitors() {
   for device_mac in "${!MONITOR_PIDS[@]}"; do
     log_write 3 "Stopping monitor for device $device_mac with PID ${MONITOR_PIDS[$device_mac]}"
     kill "${MONITOR_PIDS[$device_mac]}" 2>/dev/null
-    unset MONITOR_PIDS["$device_mac"]
+    unset "MONITOR_PIDS[$device_mac]"
   done
-}
-
-# Function to handle device reconnection attempts
-attempt_reconnection() {
-  local device_mac=$1
-  log_write 3 "Attempting to reconnect to device: $device_mac"
-  
-  if ! check_connected "$device_mac"; then
-    if scan_device "$device_mac"; then
-      connect_device "$device_mac"
-    else
-      log_write 1 "Device $device_mac not found during reconnection attempt. Skipping."
-    fi
-  else
-    log_write 3 "Device $device_mac is already connected."
-  fi
 }
 
 # Function to process each device
@@ -148,29 +173,29 @@ process_device() {
 
   log_write 3 "Processing device: $device_mac"
 
-  # Check if the device is already connected
+  # Check if the device is already connected, and skip further logic if it is
   if check_connected "$device_mac"; then
-    log_write 3 "Device $device_mac is already connected. Starting event monitoring."
-    monitor_device_events "$device_mac"
-  else
-    # If the device is not connected, scan for the device
-    if scan_device "$device_mac"; then
-      # If found, attempt to connect
-      if connect_device "$device_mac"; then
-        # Once connected, start event monitoring
-        monitor_device_events "$device_mac"
-      else
-        log_write 1 "Failed to connect to $device_mac. Skipping to next device."
-      fi
+    log_write 3 "Device $device_mac is already connected. Skipping further checks."
+    return 0
+  fi
+
+  # If the device is not connected, scan for the device
+  if scan_device "$device_mac"; then
+    # If found, attempt to connect and wait for the event
+    if connect_device "$device_mac"; then
+      # Once connected, start event monitoring
+      monitor_device_events "$device_mac"
     else
-      log_write 1 "Device $device_mac not found. Skipping connection attempt."
+      log_write 1 "Failed to connect to $device_mac. Skipping to next device."
     fi
+  else
+    log_write 1 "Device $device_mac not found. Skipping connection attempt."
   fi
 }
 
 # Main loop to continuously check devices and handle events
 main_loop() {
-  while true; do
+  while [ "$terminate_script" -eq 0 ]; do
     log_write 3 "Starting Bluetooth auto-connect cycle"
 
     # Check if Bluetooth is powered on before proceeding
@@ -188,6 +213,10 @@ main_loop() {
 
     # Iterate over each MAC address
     for DEVICE_MAC in $DEVICE_MACS; do
+      # Break the loop immediately if termination signal is received
+      if [ "$terminate_script" -eq 1 ]; then
+        break
+      fi
       process_device "$DEVICE_MAC"
     done
 
@@ -197,9 +226,6 @@ main_loop() {
     sleep 5
   done
 }
-
-# Trap to stop all monitoring processes when the script is terminated
-trap stop_all_monitors SIGINT SIGTERM
 
 # Start the main loop
 main_loop
