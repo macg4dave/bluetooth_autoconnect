@@ -21,7 +21,8 @@ This script automatically manages the connection of Bluetooth devices on a Linux
 To install these on Debian/Ubuntu-based systems, run:
 
 ```bash
-sudo apt-get install bluez jq
+sudo apt update
+sudo apt install bluez jq
 ```
 
 ## Pre-Requisites: Pairing and Trusting Devices
@@ -60,11 +61,18 @@ Clone the repository to your local machine:
 
 ```bash
 git clone https://github.com/yourusername/bluetooth-autoconnect.git
-cd bluetooth-autoconnect
 ```
 
-### Step 2: Configure the Bluetooth Devices
-Create or modify the `bluetooth_devices.json` file located in `/usr/local/share/bluetooth_autoconnect/bluetooth_devices.json`. Add the MAC addresses of the Bluetooth devices you want to auto-connect:
+### Step 2: Copy scripts folder
+Move the scripts:
+
+```bash
+sudo mv bluetooth_autoconnect /usr/local/share/
+```
+
+
+### Step 3: Configure the Bluetooth Devices
+Modify the `bluetooth_devices.json` file located in `/usr/local/share/bluetooth_autoconnect/bluetooth_devices.json`. Add the MAC addresses of the Bluetooth devices you want to auto-connect:
 
 ```json
 {
@@ -75,36 +83,20 @@ Create or modify the `bluetooth_devices.json` file located in `/usr/local/share/
 }
 ```
 
-### Step 3: Make the Script Executable
+### Step 4: Make the Script Executable
 Ensure the script is executable:
 
 ```bash
-chmod +x /usr/local/share/bluetooth_autoconnect/bin/auto_connect_bluetooth.sh
+sudo chmod +x /usr/local/share/bluetooth_autoconnect/bin/auto_connect_bluetooth.sh
 ```
 
 ## Systemd Service Setup
 
-### Step 1: Create the Systemd Service File
-To ensure the script starts automatically after the system boots, create a systemd service file:
+### Step 1: Copy the Systemd Service File
+To ensure the script starts automatically after the system boots, copy the systemd service file:
 
 ```bash
-sudo nano /etc/systemd/system/bluetooth-autoconnect.service
-```
-
-Paste the following content into the file:
-
-```ini
-[Unit]
-Description=Bluetooth Auto-Connect Service
-After=multi-user.target
-
-[Service]
-ExecStart=/usr/local/share/bluetooth_autoconnect/bin/auto_connect_bluetooth.sh
-Restart=on-failure
-User=root
-
-[Install]
-WantedBy=multi-user.target
+sudo cp /usr/local/share/bluetooth_autoconnect/bluetooth-autoconnect.service /etc/systemd/system/
 ```
 
 ### Step 2: Enable and Start the Service
@@ -147,6 +139,9 @@ sudo systemctl disable bluetooth-autoconnect.service
   - The devices are paired and trusted.
   
 - **Logs**: Check the logs for detailed error messages or status updates:
+You can edit the log_verbose=1 value in /usr/local/share/bluetooth_autoconnect/bin/auto_connect_bluetooth.sh
+from 1 to 4 for more verbose output
+and the logs are stored at /var/log/bluetooth_autoconnect.log
   
   ```bash
   journalctl -u bluetooth-autoconnect.service
