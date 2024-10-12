@@ -60,7 +60,7 @@ info 82:BA:BE:67:DE:D2
 Clone the repository to your local machine:
 
 ```bash
-git clone [https://github.com/macg4dave/bluetooth-autoconnect.git](https://github.com/macg4dave/bluetooth_autoconnect.git)
+git clone https://github.com/macg4dave/bluetooth_autoconnect.git
 ```
 
 ### Step 2: Copy scripts folder
