@@ -5,6 +5,8 @@
 source /usr/local/share/bluetooth_autoconnect/bin/error-logging/error-logging.sh
 
 log_file="/var/log/bluetooth_autoconnect.log"
+
+# Logging levels 1="ERROR" 2="NORMAL" 3="INFO" 4="DEBUG"
 log_verbose=1
 
 # Path to JSON file containing Bluetooth MAC addresses
