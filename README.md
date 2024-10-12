@@ -60,7 +60,7 @@ info 82:BA:BE:67:DE:D2
 Clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/yourusername/bluetooth-autoconnect.git
+git clone https://github.com/macg4dave/bluetooth_autoconnect.git
 ```
 
 ### Step 2: Copy scripts folder
@@ -78,7 +78,7 @@ Modify the `bluetooth_devices.json` file located in `/usr/local/share/bluetooth_
 {
   "devices": [
     "82:BA:BE:67:DE:D2",
-    "XX:XX:XX:XX:XX:XX"
+    "AA:AA:AA:AA:AA:AA"
   ]
 }
 ```
